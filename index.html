@@ -961,6 +961,60 @@
             { key: 'repoLink', title: 'Repository Link', icon: 'fa-link' }
         ];
 
+        
+        function handleHashRouting() {
+            const hash = (window.location.hash || '').toLowerCase().trim();
+            if (!hash) return;
+
+            // Station / Task routes: e.g. #station-1, #station1, #task-1, #task1
+            if (hash.includes('station') || hash.includes('task')) {
+                const match = hash.match(/\d+/);
+                if (match) {
+                    const taskNum = parseInt(match[0]);
+                    if (taskNum >= 1 && taskNum <= 5) {
+                        switchMainTab('assignments', true);
+                        openTaskPage(taskNum, true);
+                        return;
+                    }
+                }
+            }
+
+            // ProtoSem Week routes: e.g. #week-1, #week1, #protosem-week-1
+            if (hash.includes('week')) {
+                const match = hash.match(/\d+/);
+                if (match) {
+                    const weekNum = parseInt(match[0]);
+                    if (weekNum >= 0 && weekNum <= 19) {
+                        if (hash.includes('assignment')) {
+                            switchMainTab('assignments', true);
+                            openWeekTab('assignment', weekNum, true);
+                        } else {
+                            switchMainTab('protosem', true);
+                            openWeekTab('protosem', weekNum, true);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if (hash === '#protosem') {
+                switchMainTab('protosem', true);
+                return;
+            }
+
+            if (hash === '#assignments') {
+                switchMainTab('assignments', true);
+                return;
+            }
+
+            if (['#home', '#about', '#experience', '#skills', '#projects', '#contact'].includes(hash)) {
+                const sectionId = hash.replace('#', '');
+                navigateToSection(sectionId, true);
+                return;
+            }
+        }
+    
+
         function initTaskDatabase() {
             const stored = localStorage.getItem('guru_velah_iot_tasks_v2');
             if (stored) {
@@ -1004,7 +1058,8 @@
             }
         }
 
-        function openTaskPage(taskNum) {
+        function openTaskPage(taskNum, skipHashUpdate) {
+            if (!skipHashUpdate) history.replaceState(null, null, "#station-" + taskNum);
             currentActiveTask = taskNum;
             const task = taskStationData[taskNum];
             if (!task) return;
@@ -1257,7 +1312,8 @@
             }, 100);
         }
 
-        function switchMainTab(tabName) {
+        function switchMainTab(tabName, skipHashUpdate) {
+            if (!skipHashUpdate) history.replaceState(null, null, "#" + tabName);
             currentActiveTab = tabName;
             
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active-panel'));
@@ -1487,7 +1543,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             initDatabase();
             initTaskDatabase();
+            handleHashRouting();
         });
+        window.addEventListener('hashchange', handleHashRouting);
     </script>
 </body>
 </html>
