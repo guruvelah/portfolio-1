@@ -1807,34 +1807,11 @@ void loop() {}
     
 
         function initTaskDatabase() {
-            localStorage.removeItem('guru_velah_iot_tasks_v1');
-            localStorage.removeItem('guru_velah_iot_tasks_v2');
-            localStorage.removeItem('guru_velah_iot_tasks_v3');
-            localStorage.removeItem('guru_velah_iot_tasks_v4');
-            localStorage.removeItem('guru_velah_iot_tasks_v10');
-            
-            const stored = localStorage.getItem('guru_velah_iot_tasks_v10');
-            if (stored) {
-                try {
-                    taskStationData = JSON.parse(stored);
-                    for (let i = 1; i <= 5; i++) {
-                        if (DEFAULT_TASK_DATA[i]) {
-                            const overview = (taskStationData[i].sections || {}).overview || '';
-                            const hw = (taskStationData[i].sections || {}).hardware || '';
-                            if (overview.includes('###') || !hw.includes('bom-container')) {
-                                taskStationData[i] = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA[i]));
-                            } else {
-                                taskStationData[i].images = DEFAULT_TASK_DATA[i].images;
-                            }
-                        }
-                    }
-                } catch(e) {
-                    taskStationData = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA));
-                }
-            } else {
-                taskStationData = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA));
-            }
-            saveTaskDatabase();
+            // Always initialize fresh from DEFAULT_TASK_DATA so clean HTML tables & non-hashtag text render 100% reliably
+            try {
+                localStorage.clear();
+            } catch(e) {}
+            taskStationData = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA));
         }
 
         function saveTaskDatabase() {
