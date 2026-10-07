@@ -628,7 +628,25 @@
             font-size: 0.88rem;
         }
 
-    </style>
+    
+        .station-pill-btn {
+            background: rgba(140, 83, 43, 0.08);
+            border: 1px solid var(--border-tan);
+            color: var(--text-main);
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .station-pill-btn:hover, .station-pill-btn.active-st {
+            background: var(--accent-brown);
+            color: #ffffff;
+            border-color: var(--accent-brown);
+        }
+
+</style>
 </head>
 <body>
 
@@ -662,7 +680,22 @@
                     <i class="fa-solid fa-rocket" style="color:var(--accent-brown);"></i> ProtoSem Fellowship Tab
                 </div>
                 <div class="menu-dropdown-item" onclick="switchMainTab('assignments'); toggleThreeDotsMenu();">
-                    <i class="fa-solid fa-file-pen" style="color:var(--accent-sage);"></i> Assignments & Deliverables Tab
+                    <i class="fa-solid fa-layer-group" style="color:var(--accent-sage);"></i> All IoT Stations Grid
+                </div>
+                <div class="menu-dropdown-item" onclick="openTaskPage(1); toggleThreeDotsMenu();">
+                    <i class="fa-solid fa-server" style="color:var(--accent-brown);"></i> Station 1: ESP32 Web Server
+                </div>
+                <div class="menu-dropdown-item" onclick="openTaskPage(2); toggleThreeDotsMenu();">
+                    <i class="fa-solid fa-chart-line" style="color:#3498db;"></i> Station 2: Adafruit IO Dashboard
+                </div>
+                <div class="menu-dropdown-item" onclick="openTaskPage(3); toggleThreeDotsMenu();">
+                    <i class="fa-solid fa-bolt" style="color:#f39c12;"></i> Station 3: IFTTT + Adafruit IO
+                </div>
+                <div class="menu-dropdown-item" onclick="openTaskPage(4); toggleThreeDotsMenu();">
+                    <i class="fa-solid fa-fire" style="color:#e67e22;"></i> Station 4: Firebase Dashboard
+                </div>
+                <div class="menu-dropdown-item" onclick="openTaskPage(5); toggleThreeDotsMenu();">
+                    <i class="fa-solid fa-database" style="color:#27ae60;"></i> Station 5: Firebase Logging
                 </div>
                 <div class="menu-dropdown-item" onclick="openWeekTab('protosem', 0); toggleThreeDotsMenu();">
                     <i class="fa-solid fa-folder-open" style="color:var(--accent-gold);"></i> Open ProtoSem Week 0
@@ -914,13 +947,22 @@
     <!-- TAB PANEL 5: INDIVIDUAL IOT TASK DETAIL VIEW -->
     <div id="panel-individual-task" class="tab-panel">
         <div class="individual-page-container">
-            <div class="page-nav-header">
-                <button class="btn-back-tab" onclick="switchMainTab('assignments')">
-                    <i class="fa-solid fa-arrow-left"></i> Back to IoT Stations
-                </button>
-                <div style="display:flex; gap:0.6rem;">
-                    <button class="btn-back-tab" id="prevTaskBtn" onclick="navigateTask(-1)"><i class="fa-solid fa-chevron-left"></i> Prev</button>
-                    <button class="btn-back-tab" id="nextTaskBtn" onclick="navigateTask(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+            <div class="page-nav-header" style="flex-wrap:wrap; gap:1rem;">
+                <div style="display:flex; gap:0.6rem; align-items:center;">
+                    <button class="btn-back-tab" onclick="switchMainTab('assignments')">
+                        <i class="fa-solid fa-arrow-left"></i> All Stations Grid
+                    </button>
+                    <div style="display:flex; gap:0.4rem;">
+                        <button class="btn-back-tab" id="prevTaskBtn" onclick="navigateTask(-1)"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+                        <button class="btn-back-tab" id="nextTaskBtn" onclick="navigateTask(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="station-nav-pills" style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                    <button class="station-pill-btn" id="st-pill-1" onclick="openTaskPage(1)">Station 1</button>
+                    <button class="station-pill-btn" id="st-pill-2" onclick="openTaskPage(2)">Station 2</button>
+                    <button class="station-pill-btn" id="st-pill-3" onclick="openTaskPage(3)">Station 3</button>
+                    <button class="station-pill-btn" id="st-pill-4" onclick="openTaskPage(4)">Station 4</button>
+                    <button class="station-pill-btn" id="st-pill-5" onclick="openTaskPage(5)">Station 5</button>
                 </div>
             </div>
 
@@ -1759,6 +1801,13 @@ void logTelemetry(float temp, float hum, int light) {
 
             document.getElementById('prevTaskBtn').style.display = taskNum > 1 ? 'inline-flex' : 'none';
             document.getElementById('nextTaskBtn').style.display = taskNum < 5 ? 'inline-flex' : 'none';
+            for (let s = 1; s <= 5; s++) {
+                const pill = document.getElementById('st-pill-' + s);
+                if (pill) {
+                    if (s === taskNum) pill.classList.add('active-st');
+                    else pill.classList.remove('active-st');
+                }
+            }
 
             const container = document.getElementById('taskSectionsContainer');
             container.innerHTML = '';
@@ -2207,6 +2256,7 @@ void logTelemetry(float temp, float hum, int light) {
 
         function renderAssignmentsTabGrid() {
             const grid = document.getElementById('assignments-tab-grid');
+            if (!grid) return;
             grid.innerHTML = '';
             for (let i = 0; i <= 19; i++) {
                 const item = dbData[i] ? dbData[i].assignment : { title: `Week ${i}`, images: [] };
