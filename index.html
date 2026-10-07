@@ -1055,7 +1055,7 @@ const NEW_FORGE_IMG_3 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHY
     </div>
 </div>`,
                     wiring: `• DHT11 VCC -> 3.3V, GND -> GND, DATA -> GPIO23 (with 10kΩ pull-up resistor to 3.3V)\n• MQ-135 VCC -> 5.0V, GND -> GND, Analog Out (AO) -> GPIO34 (ADC1_CH6)\n• LDR Node 1 -> 3.3V, Node 2 -> GPIO35 (ADC1_CH7) & 10kΩ resistor to GND\n• Active Buzzer (+) -> GPIO18, (-) -> GND\n• Status LED Anode -> GPIO2 via 220Ω resistor, Cathode -> GND`,
-                    implementation: ```cpp
+                    implementation: `cpp
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <DHT.h>
@@ -1100,8 +1100,7 @@ void loop() {
     if (airQuality > 2500) digitalWrite(BUZZER_PIN, HIGH);
     else digitalWrite(BUZZER_PIN, LOW);
   }
-}
-```,
+}`,
                     configuration: `• Wi-Fi Mode: Station Mode (STA) with WPA2-PSK Authentication\n• Static IP Allocation: 192.168.1.105 / Subnet: 255.255.255.0 / Gateway: 192.168.1.1\n• HTTP Server Port: 80 (Standard Web Port)\n• Telemetry Sampling Interval: 2,000 ms (2 Seconds)\n• Air Quality Alert Threshold: Analog Read > 2500 ADC counts (~60% hazardous scale)`,
                     evidence: `• **Live Hardware Setup:** Physical circuit assembled on breadboard with ESP32, DHT11, MQ-135, and LDR sensors.\n• **Serial Monitor Log:** Successfully printed connection IP 192.168.1.105, DHT11 readings (Temp: 27.4°C, Humidity: 58%), and HTTP 200 OK API responses.\n• **Web Dashboard:** Interactive browser dashboard displaying real-time gauges and control toggles.`,
                     challenges: `1. **ADC Noise on GPIO34:** The ESP32's internal ADC exhibited non-linear voltage responses and high-frequency noise when reading the MQ-135 gas sensor.\n   *Fix:* Implemented a 16-sample Exponential Moving Average (EMA) software filter (\`filteredVal = alpha * rawVal + (1 - alpha) * filteredVal\`) and added a 0.1µF ceramic decoupling capacitor across the signal pin.\n2. **DHT11 NaN Exceptions:** Sensor occasionally returned 'NaN' (Not a Number) during fast polling calls.\n   *Fix:* Enforced a strict 2000ms polling barrier in code to respect the DHT11's physical sampling limit.`,
@@ -1199,7 +1198,7 @@ void loop() {
     </div>
 </div>`,
                     wiring: `• PIR Motion Sensor OUT -> GPIO13 (Digital Input with internal pull-down)\n• PWM LED Anode -> GPIO25 (LEDC Channel 0), Cathode -> GND\n• 5V Relay IN -> GPIO26 (Digital Output), VCC -> 5V, GND -> GND\n• DHT11 Data Pin -> GPIO23`,
-                    implementation: ```cpp
+                    implementation: `cpp
 #include <WiFi.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
@@ -1243,8 +1242,7 @@ void loop() {
       ledcWrite(0, state ? 255 : 0);
     }
   }
-}
-```,
+}`,
                     configuration: `• MQTT Broker Host: \`io.adafruit.com\` (Port: 1883 Unencrypted / 8883 SSL)\n• Client ID: \`ESP32_Station2_Client\`\n• Publish Topic: \`guruvelah/feeds/temperature\` (Publish Rate: 10 Seconds)\n• Subscribe Topic: \`guruvelah/feeds/relay-control\`\n• LEDC PWM Settings: Frequency = 5,000 Hz, Resolution = 8-bit (0–255 duty cycle)`,
                     evidence: `• **Live Test Setup:** Breadboard assembly connected to Adafruit IO via Wi-Fi.\n• **Adafruit IO Dashboard:** Real-time gauge updating every 10 seconds and interactive toggle switch controlling relay output.\n• **Serial Log:** Connection logs showing \`MQTT Connected!\`, \`Publishing 28.5 to temperature\`, and \`Received Relay Cmd: 1\`.`,
                     challenges: `1. **MQTT Connection Drops on Network Fluctuation:** The ESP32 would lose MQTT connection when Wi-Fi signal degraded briefly and failed to auto-reconnect.\n   *Fix:* Implemented an automated non-blocking exponential backoff reconnection routine inside the \`MQTT_connect()\` function with connection health heartbeats.\n2. **Relay Chatter on Boot:** The relay module triggered briefly during ESP32 startup due to GPIO floating states.\n   *Fix:* Added a 10kΩ pull-down resistor to GPIO26 and explicitly set pin mode and LOW state before calling \`WiFi.begin()\`.`,
@@ -1336,7 +1334,7 @@ void loop() {
     </div>
 </div>`,
                     wiring: `• SSD1306 OLED: VCC -> 3.3V, GND -> GND, SDA -> GPIO21, SCL -> GPIO22\n• DS3231 RTC: VCC -> 3.3V, GND -> GND, SDA -> GPIO21, SCL -> GPIO22 (Shared I2C Bus)\n• Rotary Encoder: CLK -> GPIO16, DT -> GPIO17, SW -> GPIO4 (with internal \`INPUT_PULLUP\`)`,
-                    implementation: ```cpp
+                    implementation: `cpp
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -1388,8 +1386,7 @@ void loop() {
   }
   display.display();
   delay(100);
-}
-```,
+}`,
                     configuration: `• I2C Clock Speed: 400 kHz (Fast-Mode I2C)\n• OLED I2C 7-bit Target Address: \`0x3C\`\n• DS3231 RTC 7-bit Target Address: \`0x68\`\n• Frame Refresh Rate: 30 Frames Per Second (FPS)\n• Display Saver Timeout: Auto-dim screen after 30 seconds of inactivity to prevent OLED pixel burn-in`,
                     evidence: `• **Physical Hardware:** Circuit operating on breadboard with crisp 128x64 display rendering custom splash screen.\n• **Menu Navigation:** Photo evidence showing smooth transition between Time/Date, Sensor Telemetry, and System Diagnostics screens via rotary push-button.\n• **Serial Log:** \`I2C Scanner found device at 0x3C and 0x68\`.`,
                     challenges: `1. **I2C Bus Hangs / Lockups:** Simultaneously reading DS3231 RTC and writing to SSD1306 caused occasional I2C bus lockup due to clock stretching conflicts.\n   *Fix:* Upgraded I2C wire clock frequency to 400kHz and wrapped I2C register calls in a software bus-health check function.\n2. **Rotary Encoder Bouncing:** Mechanical contact bounce caused menu pages to skip multiple steps on a single push.\n   *Fix:* Implemented hardware RC filtering (0.1µF capacitors) and software timer guards inside the interrupt service routine (\`IRAM_ATTR\`).`,
@@ -1487,7 +1484,7 @@ void loop() {
     </div>
 </div>`,
                     wiring: `• 18650 Battery (+) -> TP4056 B+, Battery (-) -> TP4056 B-\n• TP4056 OUT+ -> ESP32 5V / VIN, OUT- -> ESP32 GND\n• BME280 VCC -> MOSFET Drain (Source to 3.3V, Gate to GPIO25 for Power Gating)\n• BME280 / INA219 SDA -> GPIO21, SCL -> GPIO22\n• External Pushbutton Wakeup -> GPIO33 (Configured as \`EXT0\` RTC Wakeup Source)`,
-                    implementation: ```cpp
+                    implementation: `cpp
 #include <WiFi.h>
 #include <esp_sleep.h>
 #include <Adafruit_BME280.h>
@@ -1533,8 +1530,7 @@ void setup() {
   esp_deep_sleep_start();
 }
 
-void loop() {}
-```,
+void loop() {}`,
                     configuration: `• Deep Sleep Period: 300 Seconds (5 Minutes)\n• Active Wakeup Duration Target: < 1,500 ms (1.5 Seconds)\n• Deep Sleep Power Target: < 15 µA (Sensors & ESP32 combined)\n• External Interrupt Wakeup: GPIO33 (\`EXT0\` Logic High trigger)\n• RTC Fast Memory Allocation: Preserving \`bootCount\` and Wi-Fi channel settings`,
                     evidence: `• **Battery Node Setup:** Portable sensor unit powered by 18650 cell with INA219 monitoring current draw.\n• **Oscilloscope / Meter Trace:** Measured 12.8µA sleep current and a 1.2-second active pulse of 110mA during Wi-Fi transmission.\n• **Serial Boot Log:** \`Boot number: 42. Wakeup cause: Timer. Deep sleep 300s initiated.\``,
                     challenges: `1. **High Residual Sleep Current (~3.2mA):** Initial measurements showed high sleep current caused by the ESP32 USB-to-UART bridge chip (CP2102) and active sensor LEDs.\n   *Fix:* Cut power LED trace, added a MOSFET switch on GPIO25 to cut sensor VCC during sleep, and used a dedicated LDO regulator with low quiescent current (HT7333).\n2. **Wi-Fi Connection Timeout Delay:** Standard \`WiFi.begin()\` DHCP took 4–6 seconds, draining battery power.\n   *Fix:* Implemented Static IP assignment and saved the last valid Wi-Fi channel in \`RTC_DATA_ATTR\`, reducing connection time to <800ms.`,
@@ -1626,7 +1622,7 @@ void loop() {}
     </div>
 </div>`,
                     wiring: `• 4-Channel Relay Inputs: IN1 -> GPIO2, IN2 -> GPIO4, IN3 -> GPIO5, IN4 -> GPIO12\n• MicroSD Card SPI: CS -> GPIO13, MOSI -> GPIO23, MISO -> GPIO19, SCK -> GPIO18\n• ST7789 Color TFT SPI: CS -> GPIO15, DC -> GPIO16, RST -> GPIO4, SDA -> GPIO23, SCL -> GPIO18\n• Alarm Piezo Buzzer -> GPIO27`,
-                    implementation: ```cpp
+                    implementation: `cpp
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
@@ -1685,8 +1681,7 @@ void setup() {
   xTaskCreatePinnedToCore(Core1WorkerTask, "Core1Task", 4096, NULL, 1, NULL, 1);
 }
 
-void loop() {}
-```,
+void loop() {}`,
                     configuration: `• Gateway AP SSID: \`IoT_Gateway_AP\` (WPA2-PSK, IP: \`192.168.4.1\`)\n• Server Ports: HTTP Port 80, WebSocket Endpoint \`/ws\`\n• Max Concurrent Clients: 8 Web Browsers\n• FreeRTOS Task Allocation: Core 0 (Async Network Loop), Core 1 (Rule Engine & Hardware)\n• Storage Partition: LittleFS (1.5MB Flash allocated for web static assets)`,
                     evidence: `• **Physical Test Bench:** ESP32 Gateway controlling 4-channel relay board with active status display.\n• **Web Control Panel:** Mobile and desktop browsers concurrently connected to \`/ws\`, toggling relays in under 20ms.\n• **Serial Log:** \`Gateway AP started at 192.168.4.1. Client #1 connected to WebSocket /ws. FreeRTOS Core 1 Task running.\``,
                     challenges: `1. **Guru Meditation Error (Core 0 Panic):** Heavy JSON parsing and file writes inside WebServer callbacks caused watchdog timer timeouts on Core 0.\n   *Fix:* Implemented FreeRTOS Queues (\`xQueueCreate\`) to decouple network reception on Core 0 from heavy data processing on Core 1.\n2. **WebSocket Client Memory Leaks:** Broadcasts to disconnected clients caused heap memory leaks over time.\n   *Fix:* Added explicit cleanup checks (\`client->status() == WS_CONNECTED\`) before transmitting JSON packets.`,
@@ -1843,7 +1838,7 @@ void loop() {}
         }
 
         function openTaskPage(taskNum, skipHashUpdate) {
-            if (!skipHashUpdate) history.replaceState(null, null, "#station-" + taskNum);
+            if (!skipHashUpdate && typeof window !== 'undefined' && window.history && window.history.replaceState) window.history.replaceState(null, null, "#station-" + taskNum);
             currentActiveTask = taskNum;
             const task = taskStationData[taskNum];
             if (!task) return;
@@ -2097,7 +2092,7 @@ void loop() {}
         }
 
         function switchMainTab(tabName, skipHashUpdate) {
-            if (!skipHashUpdate) history.replaceState(null, null, "#" + tabName);
+            if (!skipHashUpdate && typeof window !== 'undefined' && window.history && window.history.replaceState) window.history.replaceState(null, null, "#" + tabName);
             currentActiveTab = tabName;
             
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active-panel'));
