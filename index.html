@@ -1807,24 +1807,40 @@ void loop() {}
     
 
         function initTaskDatabase() {
-            const stored = localStorage.getItem('guru_velah_iot_tasks_v5');
+            localStorage.removeItem('guru_velah_iot_tasks_v1');
+            localStorage.removeItem('guru_velah_iot_tasks_v2');
+            localStorage.removeItem('guru_velah_iot_tasks_v3');
+            localStorage.removeItem('guru_velah_iot_tasks_v4');
+            localStorage.removeItem('guru_velah_iot_tasks_v10');
+            
+            const stored = localStorage.getItem('guru_velah_iot_tasks_v10');
             if (stored) {
-                taskStationData = JSON.parse(stored);
-                for (let i = 1; i <= 5; i++) {
-                    if (DEFAULT_TASK_DATA[i]) taskStationData[i].images = DEFAULT_TASK_DATA[i].images;
+                try {
+                    taskStationData = JSON.parse(stored);
+                    for (let i = 1; i <= 5; i++) {
+                        if (DEFAULT_TASK_DATA[i]) {
+                            const overview = (taskStationData[i].sections || {}).overview || '';
+                            const hw = (taskStationData[i].sections || {}).hardware || '';
+                            if (overview.includes('###') || !hw.includes('bom-container')) {
+                                taskStationData[i] = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA[i]));
+                            } else {
+                                taskStationData[i].images = DEFAULT_TASK_DATA[i].images;
+                            }
+                        }
+                    }
+                } catch(e) {
+                    taskStationData = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA));
                 }
             } else {
                 taskStationData = JSON.parse(JSON.stringify(DEFAULT_TASK_DATA));
-                for (let i = 1; i <= 5; i++) {
-                    taskStationData[i].images = DEFAULT_TASK_DATA[i].images;
-                }
             }
+            saveTaskDatabase();
         }
 
         function saveTaskDatabase() {
             let toSave = JSON.parse(JSON.stringify(taskStationData));
             for (let i = 1; i <= 5; i++) { toSave[i].images = []; }
-            localStorage.setItem('guru_velah_iot_tasks_v5', JSON.stringify(toSave));
+            localStorage.setItem('guru_velah_iot_tasks_v10', JSON.stringify(toSave));
         }
 
         function renderTasksGrid() {
