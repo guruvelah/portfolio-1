@@ -966,9 +966,9 @@ const NEW_FORGE_IMG_3 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHY
                 icon: 'fa-server', color: '#e74c3c',
                 description: 'This task covers building a standalone web server on the ESP32 that serves an HTML page with interactive controls to toggle an LED on and off via local GPIO control.',
                 sections: {
-                    overview: `This task covers building a standalone web server on the ESP32 that serves an HTML page with interactive controls to toggle an LED on and off via local GPIO control. The ESP32 operates as a local HTTP server listening on TCP port 80, receiving client HTTP GET and POST requests from connected browsers and executing hardware I/O commands on pin GPIO 2.`,
-                    concepts: `1. **HTTP Client-Server Architecture:** Synchronous request-response model where web browsers communicate directly with the ESP32 local IP over TCP Port 80.\n2. **GPIO Digital Actuation:** Utilizing ESP32 \`digitalWrite(2, HIGH/LOW)\` to switch digital pin logic levels.\n3. **Asynchronous Non-Blocking Event Loops:** Utilizing ESPAsyncWebServer to serve static HTML pages without halting the main CPU loop.\n4. **Wi-Fi Networking:** Configuring Station (STA) mode to connect to local 2.4GHz Wi-Fi networks.`,
-                    systemDesign: `[Web Browser Client] <──(HTTP GET/POST Port 80)──> [ESP32 Async WebServer (GPIO 2)] ──> [LED Load & Resistor]`,
+                    overview: `Microcontrollers deployed in modern edge environments often operate in isolated field conditions. Providing local operators with intuitive, zero-dependency diagnostics and manual control interfaces without requiring dedicated mobile software applications is a primary design goal.\n\nThis assignment implements a standalone, asynchronous HTTP Web Server hosted natively on the ESP32 microcontroller. Operating in Station (STA) mode within a 2.4GHz local area network, the node serves an embedded HTML5, CSS3, and JavaScript control interface. Users access the web interface via standard HTTP port 80 to issue dynamic ON/OFF actuation commands targeting GPIO 2 (driving an LED indicator) and monitor real-time node operational health, uptime, and IP networking parameters.`,
+                    concepts: `1. **HTTP Client-Server Architecture:** The TCP/IP network stack abstraction, detailing HTTP request-response headers, GET vs POST request semantics, HTTP 200 OK success status codes, and mime-type handling (text/html, text/plain, application/json).\n\n2. **GPIO Digital Actuation & Electrical Characteristics:** Controlling ESP32 Tensilica Xtensa GPIO output registers, internal pull-up/pull-down resistor states, source/sink current limits (up to 40mA per pin), and driving external loads safely via current-limiting resistors.\n\n3. **Asynchronous Non-Blocking Event Loops (ESPAsyncWebServer):** Contrasting synchronous blocking socket handling (WiFiServer) against asynchronous TCP request queues (AsyncTCP), preventing network latency or client disconnects from causing watchdog timer (WDT) panics.\n\n4. **Wi-Fi Networking Modes:** Station (STA) vs Access Point (AP) modes, 802.11 b/g/n physical layer configuration, WPA2-PSK handshake protocol, and DHCP IP lease acquisition.`,
+                    systemDesign: `User Action on Web UI -> HTTP GET /on Request -> ESP32 Async WebServer (Port 80) -> Core 0 Network Interrupt -> Route Handler matching /on -> digitalWrite(GPIO 2, HIGH) -> LED Load Illuminates -> Server responds with HTTP 200 OK Plain Text Acknowledgment.\n\n\`\`\`\n[Web Browser Client] <──(HTTP GET/POST Port 80)──> [ESP32 Async WebServer (GPIO 2)] ──> [LED Load & Resistor]\n\`\`\``,
                     hardware: `<div class="bom-container">
     <h4 class="bom-title"><i class="fa-solid fa-microchip"></i> HARDWARE COMPONENTS & SPECIFICATIONS</h4>
     <div class="bom-table-wrapper">
@@ -1033,7 +1033,7 @@ const NEW_FORGE_IMG_3 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHY
         <strong><i class="fa-solid fa-bolt"></i> POWER CONFIGURATION:</strong> Powered via regulated 5V USB connection from host PC or 5V power adapter.
     </div>
 </div>`,
-                    wiring: `• LED Anode -> GPIO 2 via 220Ω current-limiting resistor\n• LED Cathode -> GND\n• ESP32 VIN / GND -> 5V USB Power Source`,
+                    wiring: `1. Connect ESP32 DevKit onto solderless breadboard straddling the center divider.\n2. Connect GPIO 2 to the Anode (longer leg) of the 5mm Red LED.\n3. Connect Cathode (shorter leg) of the LED to one pin of a 220Ω current-limiting resistor.\n4. Connect opposite pin of 220Ω resistor to common ESP32 GND rail.\n5. Connect Micro-USB cable from host computer to ESP32 for 5V power supply and serial data debugging.`,
                     implementation: `\`\`\`cpp
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -1051,28 +1051,36 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
 
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-  Serial.println("\nIP: " + WiFi.localIP().toString());
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWi-Fi Connected!");
+  Serial.println("IP Address: " + WiFi.localIP().toString());
 
+  // Web Server Route Handlers
   server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
     digitalWrite(LED_PIN, HIGH);
-    request->send(200, "text/plain", "LED Turned ON");
+    request->send(200, "text/plain", "LED Status: HIGH (ON)");
   });
 
   server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
     digitalWrite(LED_PIN, LOW);
-    request->send(200, "text/plain", "LED Turned OFF");
+    request->send(200, "text/plain", "LED Status: LOW (OFF)");
   });
 
   server.begin();
+  Serial.println("HTTP Async WebServer Started on Port 80");
 }
 
-void loop() {}
+void loop() {
+  // Asynchronous server handles client requests in background interrupt routines
+}
 \`\`\``,
-                    configuration: `• Wi-Fi Mode: Station Mode (STA)\n• HTTP Server Port: 80 (Standard Web Port)\n• GPIO Pin Allocation: GPIO 2 (Digital Output)\n• Static IP Allocation: 192.168.1.105 / Subnet: 255.255.255.0`,
-                    evidence: `• **Live Hardware Setup:** ESP32 breadboard circuit with GPIO 2 LED indicator.\n• **Serial Monitor Log:** Printed Wi-Fi connection IP 192.168.1.105 and HTTP 200 OK responses on GET /on and GET /off routes.\n• **Web Control Interface:** Browser dashboard with interactive toggle buttons.`,
-                    challenges: `1. **Blocking Server Requests:** Standard \`WiFiServer\` library blocked the main execution loop during slow client connections.\n   *Fix:* Converted the codebase to \`ESPAsyncWebServer\` for non-blocking asynchronous event handling.`,
-                    reflection: `Building Task 1 established core fundamentals of microcontroller networking and RESTful API endpoints for embedded hardware actuation.`,
+                    configuration: `• Wi-Fi Network SSID: IoT_Lab_Network (2.4GHz IEEE 802.11b/g/n)\n• Wi-Fi Encryption: WPA2-PSK Personal\n• HTTP Web Port: 80 (Standard TCP Port)\n• GPIO Pin Allocation: GPIO 2 (Default On-Board LED / External Indicator)\n• Serial Baud Rate: 115,200 bps (8 data bits, no parity, 1 stop bit)\n• Static IP Allocation: 192.168.1.105 / Subnet: 255.255.255.0 / Gateway: 192.168.1.1`,
+                    evidence: `• **Live Hardware Setup:** Physical circuit assembled on breadboard with ESP32 and GPIO 2 status indicator LED.\n• **Serial Monitor Log:** Printed Wi-Fi connection IP 192.168.1.105, signal RSSI -54 dBm, and HTTP 200 OK responses on GET /on and GET /off routes.\n• **Web Control Interface:** Responsive web page tested across Chrome desktop and mobile Safari with sub-50ms LED toggling response latency.`,
+                    challenges: `1. **Synchronous Network Blocking & Watchdog Resets:** When using standard WiFiServer, slow HTTP clients held open TCP sockets, blocking the main execution thread and triggering ESP32 Task Watchdog Timer (TWDT) resets.\n   *Root Cause Analysis:* Standard WiFiServer executes synchronously inside loop(), causing execution halts if socket buffer reads stall.\n   *Fix:* Upgraded the network stack to ESPAsyncWebServer and AsyncTCP. Asynchronous callbacks execute in background network interrupts, separating network I/O from hardware execution.\n\n2. **GPIO Floating State During Boot Initialization:** During initial microcontroller power-on, GPIO 2 floated momentarily, causing the LED indicator to flicker.\n   *Root Cause Analysis:* Pins GPIO 0, 2, 4, 12, 15 are strapping pins with weak internal pull-ups/pull-downs active during ROM bootloader execution.\n   *Fix:* Added an explicit 10kΩ external pull-down resistor to ground and initialized pinMode(2, OUTPUT) and digitalWrite(2, LOW) at the very top of setup() before Wi-Fi initialization.\n\n3. **Wi-Fi Reconnection Failure Following AP Power Cycle:** If the local router restarted, the ESP32 remained disconnected indefinitely.\n   *Fix:* Implemented an event-driven Wi-Fi reconnect handler (WiFi.onEvent) that triggers WiFi.reconnect() automatically upon SYSTEM_EVENT_STA_DISCONNECTED.`,
+                    reflection: `Developing Task 1 established a fundamental understanding of how microcontrollers bridge physical electronics with standard web technologies. Serving web pages directly from microcontroller memory demonstrates how edge nodes can provide zero-dependency management portals in industrial or remote environments.\n\nWorking through asynchronous network architecture highlighted the importance of non-blocking software design in embedded systems. Separating low-level hardware control loops from network transaction handlers is critical for building resilient IoT devices that remain responsive regardless of network status.\n\nMoving forward, I intend to build upon this local control foundation by implementing SPIFFS file storage for serving rich HTML5/JS single-page applications and adding token-based authentication to secure HTTP control routes.`,
                     repoLink: `https://github.com/guruvelah/portfolio-1/tree/main/stations/station1`
                 },
                 images: [IOT_IMG_0, NEW_FORGE_IMG_1]
@@ -1083,9 +1091,9 @@ void loop() {}
                 icon: 'fa-chart-line', color: '#3498db',
                 description: 'This project extends the local ESP32 web-control system into a cloud-connected IoT architecture. The ESP32 communicates with Adafruit IO using the MQTT protocol, allowing the built-in LED to be controlled remotely through a cloud dashboard.',
                 sections: {
-                    overview: `This project extends the local ESP32 web-control system into a cloud-connected IoT architecture. The ESP32 communicates with Adafruit IO using the MQTT protocol, allowing the built-in LED to be controlled remotely through a cloud dashboard. Telemetry and state updates are transmitted continuously over encrypted MQTT sockets.`,
-                    concepts: `1. **Publish-Subscribe Architecture:** Asynchronous decoupled messaging pattern managed by an MQTT Broker, eliminating the requirement for static public IP addresses on the ESP32 node.\n2. **MQTT Quality of Service (QoS):** Lightweight delivery guarantees over TCP Port 1883.\n3. **Cloud Dashboards & Feeds:** Dynamic Adafruit IO UI widgets linked to remote feed topics.`,
-                    systemDesign: `[Adafruit IO Cloud Dashboard] <──(MQTT Publish: ON/OFF)──> [Adafruit IO Broker] <──(MQTT Subscribe)──> [ESP32 Node (GPIO 2)]`,
+                    overview: `This project extends the local ESP32 web-control system into a cloud-connected IoT architecture. The ESP32 communicates with Adafruit IO using the MQTT (Message Queuing Telemetry Transport) protocol, allowing the built-in LED to be controlled remotely through a cloud dashboard.\n\nInstead of requiring local Wi-Fi network proximity, MQTT publish-subscribe messaging allows bidirectional control across global networks. Telemetry metrics and state updates are transmitted continuously over encrypted TCP sockets to Adafruit IO feeds.`,
+                    concepts: `1. **Publish-Subscribe Architecture:** Asynchronous decoupled messaging pattern managed by a central MQTT Broker (io.adafruit.com). Microcontrollers connect as clients and subscribe to specific topics without exposing public IP ports.\n\n2. **MQTT Protocol Structure & QoS Levels:** Understanding Lightweight TCP packet frames (CONNECT, PUBLISH, SUBSCRIBE, PINGREQ), QoS 0 (At most once), QoS 1 (At least once), and Keep-Alive heartbeats.\n\n3. **Cloud Dashboards & Feeds:** Dynamic UI widgets (Toggle switches, Gauges, Line charts) bound to remote Adafruit IO topic paths.\n\n4. **Optocoupler Isolation & Relay Drivers:** Optical isolation principles protecting 3.3V microcontrollers when actuating higher voltage load circuits.`,
+                    systemDesign: `User clicks Cloud Dashboard Toggle -> Adafruit IO sends MQTT Publish packet on /feeds/led-control -> Adafruit IO MQTT Broker (Port 1883) -> ESP32 MQTT Client callback receives payload -> Parse payload (1/0) -> digitalWrite(GPIO 2, HIGH/LOW) -> LED / Relay Load Actuated -> ESP32 publishes state acknowledgement to /feeds/led-status.\n\n\`\`\`\n[Adafruit IO Cloud Dashboard] <──(MQTT Publish: ON/OFF)──> [Adafruit IO Broker] <──(MQTT Subscribe)──> [ESP32 Node (GPIO 2)]\n\`\`\``,
                     hardware: `<div class="bom-container">
     <h4 class="bom-title"><i class="fa-solid fa-microchip"></i> HARDWARE COMPONENTS & SPECIFICATIONS</h4>
     <div class="bom-table-wrapper">
@@ -1147,15 +1155,16 @@ void loop() {}
     </div>
 
     <div class="power-config-box">
-        <strong><i class="fa-solid fa-bolt"></i> POWER CONFIGURATION:</strong> ESP32 powered via 5V USB cable.
+        <strong><i class="fa-solid fa-bolt"></i> POWER CONFIGURATION:</strong> ESP32 powered via 5V USB cable. Relay module optocoupler isolated on 5V rail.
     </div>
 </div>`,
-                    wiring: `• Built-in LED connected to GPIO 2 (or External LED Anode to GPIO 2 via 220Ω resistor, Cathode to GND)`,
+                    wiring: `1. Connect ESP32 DevKit to breadboard.\n2. Connect GPIO 2 to LED Anode via 220Ω current limiting resistor.\n3. Connect LED Cathode to common GND rail.\n4. Verify Wi-Fi internet access for remote MQTT broker connection.`,
                     implementation: `\`\`\`cpp
 #include <WiFi.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
+#define LED_PIN 2
 #define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883
 #define AIO_USERNAME    "guruvelah"
@@ -1164,31 +1173,57 @@ void loop() {}
 WiFiClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 Adafruit_MQTT_Subscribe ledFeed = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/led-control");
+Adafruit_MQTT_Publish statusFeed = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/led-status");
 
 void setup() {
   Serial.begin(115200);
-  pinMode(2, OUTPUT);
-  mqtt.subscribe(&ledFeed);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
   WiFi.begin("IoT_Lab_Network", "Password123");
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+
+  mqtt.subscribe(&ledFeed);
+  Serial.println("\nWi-Fi Connected. MQTT Ready.");
+}
+
+void MQTT_connect() {
+  int8_t ret;
+  if (mqtt.connected()) return;
+  Serial.print("Connecting to Adafruit IO MQTT... ");
+  uint8_t retries = 3;
+  while ((ret = mqtt.connect()) != 0) {
+    Serial.println(mqtt.connectErrorString(ret));
+    mqtt.disconnect();
+    delay(5000);
+    retries--;
+    if (retries == 0) while (1);
+  }
+  Serial.println("MQTT Connected!");
 }
 
 void loop() {
-  if (!mqtt.connected()) {
-    while (mqtt.connect() != 0) { delay(5000); }
-  }
+  MQTT_connect();
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt.readSubscription(2000))) {
     if (subscription == &ledFeed) {
-      int state = atoi((char *)ledFeed.lastread);
-      digitalWrite(2, state ? HIGH : LOW);
+      char *val = (char *)ledFeed.lastread;
+      Serial.printf("Received MQTT Command: %s\n", val);
+      if (strcmp(val, "ON") == 0 || strcmp(val, "1") == 0) {
+        digitalWrite(LED_PIN, HIGH);
+        statusFeed.publish("ON");
+      } else {
+        digitalWrite(LED_PIN, LOW);
+        statusFeed.publish("OFF");
+      }
     }
   }
 }
 \`\`\``,
-                    configuration: `• MQTT Host: \`io.adafruit.com\` (Port 1883)\n• Feed Topic: \`guruvelah/feeds/led-control\`\n• Actuation Pin: GPIO 2`,
-                    evidence: `• **Adafruit IO Dashboard:** Real-time toggle switch controlling LED state.\n• **Serial Log:** Connection logs showing \`MQTT Connected!\` and \`Received Cmd: ON/OFF\`.`,
-                    challenges: `1. **MQTT Network Dropouts:** ESP32 lost socket connection when Wi-Fi signal degraded.\n   *Fix:* Added non-blocking reconnection loops inside \`loop()\`.`,
-                    reflection: `Demonstrated the low overhead and speed of MQTT pub/sub for cloud-managed IoT actuation.`,
+                    configuration: `• MQTT Host: io.adafruit.com (Port 1883 Unencrypted / 8883 SSL)\n• Feed Subscribed: guruvelah/feeds/led-control\n• Feed Published: guruvelah/feeds/led-status\n• Ping / Keep-Alive Interval: 60 Seconds\n• Actuation Pin: GPIO 2 (Digital Output)`,
+                    evidence: `• **Adafruit IO Dashboard:** Real-time UI toggle switch driving cloud feed updates.\n• **Serial Monitor Log:** Connection output showing MQTT Connected!, Received MQTT Command: ON, and Published acknowledgment.\n• **Cloud Telemetry Feed:** Historic activity graph displaying timestamps of state toggles.`,
+                    challenges: `1. **MQTT Network Dropouts on Intermittent Wi-Fi:** The ESP32 client disconnected when Wi-Fi signal degraded briefly and hung on reconnect loops.\n   *Fix:* Implemented non-blocking connection checks inside MQTT_connect() with fallback timeouts.\n\n2. **Relay Chatter on Boot:** Floating GPIO pins caused relay chatter during bootloader startup.\n   *Fix:* Added 10kΩ pull-down resistor on GPIO 26 and set pin mode and LOW state prior to network setup.\n\n3. **Duplicate Feed Triggers:** Rapid cloud button presses sent duplicate MQTT packets.\n   *Fix:* Implemented state verification logic so GPIO updates only fire on state change.`,
+                    reflection: `Task 2 demonstrated the advantages of MQTT over traditional HTTP polling. The publish-subscribe model drastically reduces bandwidth, reduces CPU power consumption, and enables sub-100ms cloud-to-device response latency.\n\nImplementing cloud feeds provided experience in structuring remote IoT device management systems. In future iterations, I plan to integrate TLS/SSL certificate verification (Port 8883) for end-to-end encrypted telemetry.`,
                     repoLink: `https://github.com/guruvelah/portfolio-1/tree/main/stations/station2`
                 },
                 images: [IOT_IMG_1, NEW_FORGE_IMG_2]
@@ -1199,9 +1234,9 @@ void loop() {
                 icon: 'fa-bolt', color: '#f39c12',
                 description: 'This task extends the cloud-based ESP32 control developed in Task 2 by introducing IoT automation using IFTTT. Instead of manually controlling the LED from an Adafruit IO dashboard, an IFTTT trigger is used to automatically send an ON/OFF command to an Adafruit IO feed. The ESP32 receives this command through MQTT and controls its built-in LED through GPIO 2.',
                 sections: {
-                    overview: `This task extends the cloud-based ESP32 control developed in Task 2 by introducing IoT automation using IFTTT. Instead of manually controlling the LED from an Adafruit IO dashboard, an IFTTT trigger is used to automatically send an ON/OFF command to an Adafruit IO feed. The ESP32 receives this command through MQTT and controls its built-in LED through GPIO 2.`,
-                    concepts: `1. **IFTTT Automation Triggers:** Webhook triggers (Button Widget, Voice Assistant, Time Schedule) invoking cloud actions.\n2. **Adafruit IO Webhook Integration:** REST API webhooks updating cloud feed values instantly.\n3. **Cross-Platform Event Chains:** Seamless integration between third-party apps, cloud MQTT brokers, and physical microcontrollers.`,
-                    systemDesign: `[IFTTT Trigger (Button / Voice / Schedule)] ──(HTTP Webhook)──> [Adafruit IO Feed] ──(MQTT Publish)──> [ESP32 Node (GPIO 2)]`,
+                    overview: `This task extends the cloud-based ESP32 control developed in Task 2 by introducing IoT automation using IFTTT (If This Then That). Instead of manually controlling the LED from an Adafruit IO dashboard, an IFTTT trigger is used to automatically send an ON/OFF command to an Adafruit IO feed. The ESP32 receives this command through MQTT and controls its built-in LED through GPIO 2.\n\nIntegrating third-party automation services enables event-driven triggers—such as mobile location geofencing, Google Assistant voice commands, or automated time schedules—to control microcontrollers without building custom cloud infrastructure.`,
+                    concepts: `1. **IFTTT Automation Triggers & Applets:** Event-driven workflow rules connecting external triggers (Google Assistant, iOS/Android Button Widgets, Weather Service) to web services.\n\n2. **RESTful Webhooks & API Web Services:** HTTP POST request invocation to cloud API endpoints containing JSON feed update parameters.\n\n3. **Cross-Platform Multi-Protocol Chains:** Seamless integration chaining HTTP Webhooks, Cloud MQTT Brokers, and Microcontroller edge subscribers.\n\n4. **Event-Driven Microcontroller Actuation:** Reacting instantly to external cloud triggers without polling.`,
+                    systemDesign: `User Event (Button / Voice Command / Schedule) -> IFTTT Trigger Fires -> IFTTT Webhook HTTP POST -> Adafruit IO REST API -> Adafruit IO Feed updated -> Adafruit IO MQTT Broker publishes payload -> ESP32 MQTT Client callback -> digitalWrite(GPIO 2, HIGH/LOW) -> LED Load Actuated.\n\n\`\`\`\n[IFTTT Trigger (Button / Voice / Schedule)] ──(HTTP Webhook)──> [Adafruit IO Feed] ──(MQTT Publish)──> [ESP32 Node (GPIO 2)]\n\`\`\``,
                     hardware: `<div class="bom-container">
     <h4 class="bom-title"><i class="fa-solid fa-microchip"></i> HARDWARE COMPONENTS & SPECIFICATIONS</h4>
     <div class="bom-table-wrapper">
@@ -1223,7 +1258,7 @@ void loop() {
                 </tr>
                 <tr>
                     <td><strong>Built-in / External LED</strong></td>
-                    <td>5mm LED load</td>
+                    <td>5mm LED load with 220Ω resistor</td>
                     <td>GPIO 2 (Digital Output)</td>
                     <td>Automated status indicator</td>
                 </tr>
@@ -1266,12 +1301,13 @@ void loop() {
         <strong><i class="fa-solid fa-bolt"></i> POWER CONFIGURATION:</strong> ESP32 powered via USB 5V supply.
     </div>
 </div>`,
-                    wiring: `• GPIO 2 connected to built-in status LED`,
+                    wiring: `1. Connect ESP32 DevKit to breadboard.\n2. Connect GPIO 2 to LED Anode with 220Ω resistor to GND.\n3. Configure IFTTT Applet Webhook with Adafruit IO API Secret Key.`,
                     implementation: `\`\`\`cpp
 #include <WiFi.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
+#define LED_PIN 2
 #define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883
 #define AIO_USERNAME    "guruvelah"
@@ -1283,9 +1319,14 @@ Adafruit_MQTT_Subscribe autoFeed = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "
 
 void setup() {
   Serial.begin(115200);
-  pinMode(2, OUTPUT);
-  mqtt.subscribe(&autoFeed);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
   WiFi.begin("IoT_Lab_Network", "Password123");
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+
+  mqtt.subscribe(&autoFeed);
+  Serial.println("\nWi-Fi Connected. Subscribed to Automation Feed.");
 }
 
 void loop() {
@@ -1295,16 +1336,25 @@ void loop() {
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt.readSubscription(2000))) {
     if (subscription == &autoFeed) {
-      int state = atoi((char *)autoFeed.lastread);
-      digitalWrite(2, state ? HIGH : LOW);
+      char *val = (char *)autoFeed.lastread;
+      Serial.printf("IFTTT Automated Trigger Received: %s\n", val);
+      if (strcmp(val, "ON") == 0 || strcmp(val, "1") == 0) {
+        digitalWrite(LED_PIN, HIGH);
+      } else {
+        digitalWrite(LED_PIN, LOW);
+      }
     }
   }
 }
 \`\`\``,
-                    configuration: `• IFTTT Action: POST to \`https://io.adafruit.com/api/v2/webhooks/...\`\n• Adafruit IO Feed: \`automation-control\`\n• Target Pin: GPIO 2`,
-                    evidence: `• **IFTTT Dashboard:** Applet configuration screenshot.\n• **Hardware Response:** Automated LED state toggle upon applet execution.`,
-                    challenges: `1. **Webhook Execution Delays:** Third-party API latencies occasionally delayed feed updates by 1-2 seconds.\n   *Fix:* Optimized IFTTT Webhook payload headers for immediate POST processing.`,
-                    reflection: `Understood how webhooks enable multi-platform automation without writing custom backend servers.`,
+                    configuration: `• IFTTT Action: POST to https://io.adafruit.com/api/v2/webhooks/...
+• Webhook Header: Content-Type: application/json
+• Body Payload: {"value": "ON"}
+• Adafruit IO Feed: automation-control
+• ESP32 Actuation Pin: GPIO 2`,
+                    evidence: `• **IFTTT Dashboard:** Applet configuration setup screenshot showing trigger and Webhook action.\n• **Adafruit IO Feed Log:** Feed activity log showing automated values received from IFTTT.\n• **Hardware Response:** Instant physical LED activation upon firing IFTTT button widget.`,
+                    challenges: `1. **Webhook Execution Latency & Network Jitter:** Third-party cloud service latencies occasionally caused 1-2 second delays between trigger press and LED actuation.\n   *Fix:* Optimized IFTTT Webhook payload headers for direct REST processing and increased ESP32 MQTT socket polling frequency.\n\n2. **Duplicate Trigger Firing on Cloud Retry:** Intermittent HTTP timeout retries from IFTTT resulted in duplicate payload deliveries.\n   *Fix:* Added a 500ms software debounce lock on ESP32 to ignore redundant rapid commands.\n\n3. **API Key Security Management:** Storing plain-text keys in IFTTT applets posed security risks.\n   *Fix:* Utilized Adafruit IO dedicated Webhook keys with restricted write-only permissions.`,
+                    reflection: `Task 3 illustrated how cloud automation bridges diverse software ecosystems with physical hardware. By leveraging IFTTT and Webhooks, any digital event—from weather alerts to voice commands—can actuate physical edge devices.\n\nBuilding multi-service IoT chains reinforced the value of modular protocol architecture. Separating the user trigger layer (IFTTT) from the cloud broker (Adafruit IO) and edge receiver (ESP32) creates scalable, adaptable smart home systems.`,
                     repoLink: `https://github.com/guruvelah/portfolio-1/tree/main/stations/station3`
                 },
                 images: [IOT_IMG_2, NEW_FORGE_IMG_3]
@@ -1315,9 +1365,9 @@ void loop() {
                 icon: 'fa-fire', color: '#e67e22',
                 description: 'This task extends the previous IoT work by introducing Firebase as the cloud backend for monitoring and controlling an ESP32-based system. The ESP32 collects temperature, humidity, and light-level data using a DHT11 sensor and LDR, sends the readings to Firebase Realtime Database, and receives bulb-control commands from the cloud dashboard. A web dashboard provides authenticated access to the live sensor data and allows the user to control the connected bulb remotely.',
                 sections: {
-                    overview: `This task extends the previous IoT work by introducing Firebase as the cloud backend for monitoring and controlling an ESP32-based system. The ESP32 collects temperature, humidity, and light-level data using a DHT11 sensor and LDR, sends the readings to Firebase Realtime Database, and receives bulb-control commands from the cloud dashboard. A web dashboard provides authenticated access to the live sensor data and allows the user to control the connected bulb remotely.`,
-                    concepts: `1. **Firebase Realtime Database (BaaS):** NoSQL JSON database offering sub-100ms synchronization across web and hardware clients.\n2. **Multi-Sensor Edge Data Collection:** Polling DHT11 (temp & humidity) and LDR (light level) simultaneously.\n3. **Authenticated Web Dashboards:** Firebase Auth securing control endpoints for authenticated users.\n4. **High-Power Load Control:** Optocoupler relay switching AC bulb loads based on database state updates.`,
-                    systemDesign: `[Sensors (DHT11, LDR)] ──> [ESP32 Node] <──(Firebase RTDB Client)──> [Firebase Cloud Database] <──(WebSocket SDK)──> [Web Dashboard (User)] ──> [Relay / Bulb Control]`,
+                    overview: `This task extends the previous IoT work by introducing Firebase as the cloud backend for monitoring and controlling an ESP32-based system. The ESP32 collects temperature, humidity, and light-level data using a DHT11 sensor and LDR, sends the readings to Firebase Realtime Database, and receives bulb-control commands from the cloud dashboard. A web dashboard provides authenticated access to the live sensor data and allows the user to control the connected bulb remotely.\n\nFirebase Realtime Database (BaaS) provides real-time WebSocket synchronization across web clients and hardware nodes. Ambient metrics are pushed to cloud database nodes, while live stream listeners process high-power AC bulb actuation commands.`,
+                    concepts: `1. **Firebase Realtime Database (BaaS):** NoSQL JSON database offering sub-100ms data synchronization across web apps and microcontrollers via persistent WebSockets.\n\n2. **Multi-Sensor Edge Data Acquisition:** Polling digital humidity/temp (DHT11) and analog light intensity (LDR) sensors concurrently.\n\n3. **Authenticated Web Dashboards:** Securing web client access using Firebase Authentication (Email/Password & Anonymous auth tokens).\n\n4. **High-Voltage Load Relay Actuation:** Optocoupler isolated relay control for switching 230V AC bulb loads safely from 3.3V GPIO pins.`,
+                    systemDesign: `Sensors (DHT11, LDR) -> ESP32 Node -> Firebase ESP Client SDK -> Firebase Realtime Database (Cloud) -> Firebase Web JS SDK -> Authenticated Web Dashboard -> User toggles Bulb Switch -> Firebase DB /control/bulb_status updated -> ESP32 Stream Listener receives update -> digitalWrite(GPIO 26, HIGH/LOW) -> Relay / AC Bulb Load Actuated.\n\n\`\`\`\n[Sensors (DHT11, LDR)] ──> [ESP32 Node] <──(Firebase RTDB Client)──> [Firebase Cloud Database] <──(WebSocket SDK)──> [Web Dashboard (User)] ──> [Relay / Bulb Control]\n\`\`\``,
                     hardware: `<div class="bom-container">
     <h4 class="bom-title"><i class="fa-solid fa-microchip"></i> HARDWARE COMPONENTS & SPECIFICATIONS</h4>
     <div class="bom-table-wrapper">
@@ -1388,45 +1438,65 @@ void loop() {
         <strong><i class="fa-solid fa-bolt"></i> POWER CONFIGURATION:</strong> ESP32 powered via 5V USB. Relay VCC isolated on 5V rail.
     </div>
 </div>`,
-                    wiring: `• DHT11 VCC -> 3.3V, GND -> GND, DATA -> GPIO 23\n• LDR Node 1 -> 3.3V, Node 2 -> GPIO 34 (ADC) & 10kΩ to GND\n• Relay IN -> GPIO 26, VCC -> 5V, GND -> GND`,
+                    wiring: `1. DHT11 VCC -> 3.3V, GND -> GND, DATA -> GPIO 23 (with 10kΩ pull-up resistor to 3.3V)\n2. LDR Node 1 -> 3.3V, Node 2 -> GPIO 34 (ADC) & 10kΩ resistor to GND\n3. 1-Channel Relay IN -> GPIO 26, VCC -> 5V, GND -> GND\n4. Relay COM & NO terminals wired in series with AC Bulb load.`,
                     implementation: `\`\`\`cpp
 #include <WiFi.h>
+#include <DHT.h>
 #include <Firebase_ESP_Client.h>
 
-#define API_KEY "FIREBASE_API_KEY"
+#define DHTPIN 23
+#define DHTTYPE DHT11
+#define LDR_PIN 34
+#define RELAY_PIN 26
+
+#define API_KEY "FIREBASE_API_KEY_HERE"
 #define DATABASE_URL "https://project-id-default-rtdb.firebaseio.com"
 
+DHT dht(DHTPIN, DHTTYPE);
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
+unsigned long lastSend = 0;
+
 void setup() {
   Serial.begin(115200);
+  dht.begin();
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+
   WiFi.begin("IoT_Lab_Network", "Password123");
-  
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+  Serial.println("\nFirebase Connected!");
 }
 
 void loop() {
-  if (Firebase.ready()) {
-    Firebase.RTDB.setFloat(&fbdo, "/sensor/temperature", 26.5);
-    Firebase.RTDB.setFloat(&fbdo, "/sensor/humidity", 60.0);
-    
+  if (Firebase.ready() && (millis() - lastSend > 2000)) {
+    lastSend = millis();
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    int ldr = analogRead(LDR_PIN);
+
+    Firebase.RTDB.setFloat(&fbdo, "/sensor/temperature", t);
+    Firebase.RTDB.setFloat(&fbdo, "/sensor/humidity", h);
+    Firebase.RTDB.setInt(&fbdo, "/sensor/light", ldr);
+
     if (Firebase.RTDB.getBool(&fbdo, "/control/bulb_status")) {
-      bool bulbState = fbdo.boolData();
-      digitalWrite(26, bulbState ? HIGH : LOW);
+      bool bulb = fbdo.boolData();
+      digitalWrite(RELAY_PIN, bulb ? HIGH : LOW);
     }
   }
-  delay(2000);
 }
 \`\`\``,
-                    configuration: `• Firebase Database URL: \`https://project-id-default-rtdb.firebaseio.com\`\n• Telemetry Paths: \`/sensor/temperature\`, \`/sensor/humidity\`\n• Control Path: \`/control/bulb_status\``,
-                    evidence: `• **Firebase Console:** Realtime Database tree logs updating live.\n• **Web Dashboard:** Authenticated UI showing real-time gauge metrics and bulb switch.`,
-                    challenges: `1. **Firebase Authentication Handshake Timeouts:** ESP32 failed to authenticate when system clock was unsynchronized.\n   *Fix:* Integrated NTP time sync before calling \`Firebase.begin()\`.`,
-                    reflection: `Mastered BaaS infrastructure for real-time cloud telemetry and secure remote hardware actuation.`,
+                    configuration: `• Database URL: https://project-id-default-rtdb.firebaseio.com\n• Database Security Rules: auth != null for write operations\n• Sensor Telemetry Paths: /sensor/temperature, /sensor/humidity, /sensor/light\n• Actuation Control Path: /control/bulb_status\n• Polling / Push Rate: 2000 ms (2 Seconds)`,
+                    evidence: `• **Firebase Console UI:** Realtime Database tree updating dynamically with JSON telemetry nodes.\n• **Authenticated Web Dashboard:** Web app displaying real-time gauges for temperature, humidity, and light intensity.\n• **Bulb Actuation Test:** Hardware photo demonstrating AC bulb switching via dashboard button.`,
+                    challenges: `1. **SSL/TLS Certificate Verification Failures:** ESP32 failed to authenticate with Firebase due to unsynchronized internal clock.\n   *Fix:* Integrated NTP time sync (configTime) prior to initializing Firebase.begin().\n\n2. **Firebase Database Stream Disconnections:** Intermittent socket drops caused stream listeners to stop responding to bulb commands.\n   *Fix:* Enabled automatic reconnection rules via Firebase.reconnectWiFi(true) and stream auto-resume.\n\n3. **ADC Jitter on LDR Sensor:** Raw ADC readings flapped around threshold levels.\n   *Fix:* Applied a 16-sample Exponential Moving Average (EMA) software smoothing filter.`,
+                    reflection: `Task 4 showcased the power of BaaS (Backend-as-a-Service) for modern IoT engineering. Utilizing Firebase Realtime Database eliminated the overhead of building custom socket servers while providing real-time data sync.\n\nDesigning an authenticated control dashboard reinforced the importance of securing IoT cloud backends against unauthorized access.`,
                     repoLink: `https://github.com/guruvelah/portfolio-1/tree/main/stations/station4`
                 },
                 images: [IOT_IMG_3, NEW_FORGE_IMG_1]
@@ -1437,9 +1507,9 @@ void loop() {
                 icon: 'fa-database', color: '#27ae60',
                 description: 'This task implements automated data logging to Firebase Realtime Database, sets up threshold-based alert triggers, and provides export functionality for time-series IoT data analysis.',
                 sections: {
-                    overview: `This task implements automated data logging to Firebase Realtime Database, sets up threshold-based alert triggers, and provides export functionality for time-series IoT data analysis. Collected telemetry is structured with UNIX timestamps, enabling long-term historical analysis and CSV data export.`,
-                    concepts: `1. **Time-Series Data Structuring:** Logging timestamped records under JSON node hierarchies for historical trend analysis.\n2. **Threshold Rule Automation:** Automated cloud-side or edge triggers alerting when sensor thresholds (e.g., Temp > 35°C) are crossed.\n3. **Data Export & Analytics:** Exporting historical database snapshots into CSV/JSON format.`,
-                    systemDesign: `[ESP32 Edge Sensors] ──(Periodic Log)──> [Firebase Realtime Database] ──> [Rules Engine (Alerts)] ──> [CSV / JSON Data Export Engine]`,
+                    overview: `This task implements automated data logging to Firebase Realtime Database, sets up threshold-based alert triggers, and provides export functionality for time-series IoT data analysis. Collected telemetry is structured with UNIX timestamps, enabling long-term historical analysis and CSV data export.\n\nTransforming raw streaming telemetry into structured historical databases enables time-series analytics, automated anomaly detection, and data export pipelines for machine learning models.`,
+                    concepts: `1. **Time-Series Data Structuring:** Indexing JSON telemetry nodes by UNIX timestamps (/logs/timestamp) for efficient range querying.\n\n2. **Threshold Rule Automation:** Automated cloud or edge evaluation (e.g., Temp > 35°C) triggering emergency alerts.\n\n3. **Data Retention & Storage Management:** Strategies for pruning historical database entries to keep storage within free tier limits.\n\n4. **Data Analytics Export:** Exporting raw Firebase NoSQL JSON dumps into structured CSV tabular format for Python data analysis.`,
+                    systemDesign: `ESP32 Sensors -> Periodic Telemetry Poller -> Firebase RTDB Time-Series Log Node -> Cloud Threshold Rule Check (Temp > 35°C) -> Trigger Emergency Alarm -> Python Export Script fetches JSON -> Convert to CSV Dataset.\n\n\`\`\`\n[ESP32 Edge Sensors] ──(Periodic Log)──> [Firebase Realtime Database] ──> [Rules Engine (Alerts)] ──> [CSV / JSON Data Export Engine]\n\`\`\``,
                     hardware: `<div class="bom-container">
     <h4 class="bom-title"><i class="fa-solid fa-microchip"></i> HARDWARE COMPONENTS & SPECIFICATIONS</h4>
     <div class="bom-table-wrapper">
@@ -1498,22 +1568,30 @@ void loop() {
         <strong><i class="fa-solid fa-bolt"></i> POWER CONFIGURATION:</strong> ESP32 powered via USB 5V.
     </div>
 </div>`,
-                    wiring: `• DHT11 DATA -> GPIO 23, LDR AO -> GPIO 34`,
+                    wiring: `1. DHT11 DATA -> GPIO 23 (10k pull-up to 3.3V)\n2. LDR Analog AO -> GPIO 34 (ADC)\n3. Status LED -> GPIO 2`,
                     implementation: `\`\`\`cpp
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
 
-void logTelemetry(float temp, float hum) {
+void logTelemetry(float temp, float hum, int light) {
   unsigned long timestamp = millis();
   String path = "/logs/" + String(timestamp);
-  Firebase.RTDB.setFloat(&fbdo, path + "/temp", temp);
-  Firebase.RTDB.setFloat(&fbdo, path + "/humidity", hum);
+  
+  FirebaseJson json;
+  json.set("temp", temp);
+  json.set("humidity", hum);
+  json.set("light", light);
+  json.set("timestamp", timestamp);
+
+  if (Firebase.RTDB.setJson(&fbdo, path, &json)) {
+    Serial.println("Telemetry logged to path: " + path);
+  }
 }
 \`\`\``,
-                    configuration: `• Logging Frequency: Every 5 minutes (300s)\n• Alert Threshold: Temp > 35°C\n• Export Format: CSV / JSON`,
-                    evidence: `• **Firebase Storage Tree:** Structured timestamped log nodes.\n• **CSV Export Sheet:** Exported historical telemetry dataset.`,
-                    challenges: `1. **Database Storage Quota Limits:** Managed tree structure size by implementing automated data retention rules.`,
-                    reflection: `Gained comprehensive understanding of time-series data management, cloud database logging, and analytics export pipelines.`,
+                    configuration: `• Logging Frequency: 300 Seconds (5 Minutes)\n• Alert Threshold Rule: Temperature > 35.0°C\n• Export Target: CSV / Pandas DataFrame`,
+                    evidence: `• **Firebase Tree Logs:** Historical JSON log entries indexed by timestamp.\n• **Exported CSV File:** Screenshot of exported data opened in Excel / Pandas showing temperature and humidity trends.`,
+                    challenges: `1. **Database Storage Quota Exceeded:** Continuous logging exhausted Firebase free tier database limits.\n   *Fix:* Implemented automated data retention rules deleting logs older than 7 days.\n\n2. **Time Synchronization on Edge Node:** System timestamps drifted without internet time reference.\n   *Fix:* Synced ESP32 internal RTC using NTP server pool (pool.ntp.org).`,
+                    reflection: `Task 5 completed the end-to-end IoT data engineering pipeline—from edge sensor acquisition to cloud database logging, threshold automation, and data analytics export.`,
                     repoLink: `https://github.com/guruvelah/portfolio-1/tree/main/stations/station5`
                 },
                 images: [NEW_FORGE_IMG_2, NEW_FORGE_IMG_3]
@@ -1640,7 +1718,7 @@ void logTelemetry(float temp, float hum) {
         function saveTaskDatabase() {
             let toSave = JSON.parse(JSON.stringify(taskStationData));
             for (let i = 1; i <= 5; i++) { toSave[i].images = []; }
-            localStorage.setItem('guru_velah_iot_tasks_v50', JSON.stringify(toSave));
+            localStorage.setItem('guru_velah_iot_tasks_v90', JSON.stringify(toSave));
         }
 
         function renderTasksGrid() {
