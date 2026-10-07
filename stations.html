@@ -675,7 +675,7 @@
     </header>
 
     <!-- TAB PANEL 1: MAIN PORTFOLIO -->
-    <div id="panel-portfolio" class="tab-panel active-panel">
+    <div id="panel-portfolio" class="tab-panel">
         
         <!-- HOME HERO SECTION -->
         <section id="home" style="min-height:85vh; display:flex; flex-direction:column; justify-content:center;">
@@ -834,7 +834,7 @@
     </div>
 
     <!-- TAB PANEL 3: IOT ASSIGNMENTS TAB -->
-    <div id="panel-assignments" class="tab-panel">
+    <div id="panel-assignments" class="tab-panel active-panel">
         <section>
             <div class="section-title">
                 <span style="color:var(--accent-sage); font-family:var(--font-serif);"><i class="fa-solid fa-microchip"></i> IOT LAB ASSIGNMENTS (5 STATIONS)</span>
@@ -2232,10 +2232,11 @@ void logTelemetry(float temp, float hum, int light) {
         document.addEventListener('DOMContentLoaded', () => {
             initDatabase();
             initTaskDatabase();
-            if (window.location.hash) {
-                handleHashRouting();
-            } else {
+            renderTasksGrid();
+            if (!window.location.hash) {
                 switchMainTab('assignments');
+            } else {
+                handleHashRouting();
             }
         });
         window.addEventListener('hashchange', handleHashRouting);
